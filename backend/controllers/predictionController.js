@@ -85,7 +85,7 @@ async function callGeminiWithRetry(genAI, modelChain, contents, maxRetries = 3) 
         const model = genAI.getGenerativeModel({ model: modelName });
         
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('API Timeout')), 12000) // 12s timeout
+          setTimeout(() => reject(new Error('API Timeout')), 8000) // 8s timeout
         );
         
         const result = await Promise.race([
@@ -159,14 +159,11 @@ const analyzeImage = async (req, res) => {
     const imagePart = { inlineData: { data: buffer.toString('base64'), mimeType } };
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Prioritize fastest models for <10s response
+    // Prioritize fastest and most stable models
     const modelChain = [
-      'gemini-3.1-flash-lite',
       'gemini-2.0-flash', 
       'gemini-1.5-flash', 
-      'gemini-flash-latest', 
-      'gemini-2.0-flash-lite',
-      'gemini-pro-latest'
+      'gemini-1.5-flash-8b'
     ];
 
     // 3. Single-Stage Analysis (Reduces API calls to avoid 429 rate limits)
@@ -191,7 +188,7 @@ NO extra text, NO markdown blocks.`;
 
     let finalData = null;
     try {
-      const result = await callGeminiWithRetry(genAI, modelChain, [analysisPrompt, imagePart]);
+      const result = await callGeminiWithRetry(genAI, modelChain, [analysisPrompt, imagePart], 2);
       const resJson = extractJSON(result.text);
       
       if (!resJson) throw new Error('Failed to parse AI response');
@@ -210,7 +207,7 @@ NO extra text, NO markdown blocks.`;
       if (cropName === 'Unknown' || !ALLOWED_CROPS.map(c => c.toLowerCase()).includes(cropName.toLowerCase())) {
         return res.status(422).json({
           success: false,
-          error: 'Crop not recognized as one of the supported types.',
+          error: `Crop identified as ${cropName}, which is not currently supported.`,
           errorType: 'crop_not_detected'
         });
       }
@@ -236,27 +233,15 @@ NO extra text, NO markdown blocks.`;
       };
       console.log(`[ANALYZE] ✓ ${finalData.crop_name}: ${finalData.disease_name} (${finalData.confidence}%)`);
     } catch (err) {
+      console.error('[ANALYZE] Engine Error:', err.message);
       const { status, message, errorType } = userFriendlyError(err);
       
-      // CRITICAL FALLBACK: If AI is rate-limited, provide a simulated result so the app works
-      if (errorType === 'rate_limit') {
-        console.warn('[ANALYZE] AI Rate Limited. Providing simulated response...');
-        finalData = {
-          crop_name: 'Mango', // Default for simulation
-          disease_name: 'Anthracnose (Simulated)',
-          confidence: 78,
-          description: 'Dark, sunken spots on leaves and stems. This is a simulated response because the AI service is currently at its limit.',
-          description_hi: 'पत्तियों और तनों पर काले, धंसे हुए धब्बे। यह एक सिम्युलेटेड प्रतिक्रिया है क्योंकि एआई सेवा वर्तमान में अपनी सीमा पर है।',
-          cause: 'Colletotrichum gloeosporioides (Fungus)',
-          treatment: '1. Prune affected branches.\n2. Apply copper-based fungicide.\n3. Ensure better air circulation.',
-          treatment_hi: '1. प्रभावित शाखाओं की छँटाई करें।\n2. कॉपर-आधारित कवकनाशी लगाएं।\n3. बेहतर वायु संचार सुनिश्चित करें।',
-          prevention: 'Avoid overhead irrigation, use resistant varieties, and maintain field sanitation.',
-          isSimulated: true
-        };
-        return res.status(200).json({ success: true, data: finalData, isSimulated: true });
-      }
-      
-      return res.status(status).json({ success: false, error: message, errorType });
+      return res.status(status).json({ 
+        success: false, 
+        error: message, 
+        errorType: errorType,
+        details: 'The AI engine is currently under high load or rate-limited.'
+      });
     }
 
     // 5. Save to DB (async)
