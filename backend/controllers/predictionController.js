@@ -248,6 +248,7 @@ NO extra text, NO markdown blocks.`;
     // 5. Save to DB — link to user if logged in
     let savedRecord = null;
     const userId = req.user?.id || req.user?._id || null;
+    console.log(`[ANALYZE] Attempting to save to DB. userId: ${userId || 'guest'}, imageHash: ${imageHash}`);
     
     try {
       savedRecord = await Prediction.create({
@@ -262,9 +263,9 @@ NO extra text, NO markdown blocks.`;
         symptoms: finalData.description,
         cause: finalData.cause
       });
-      console.log(`[DB] Prediction saved. userId: ${userId || 'guest'}`);
+      console.log(`[DB] Prediction saved successfully. ID: ${savedRecord._id}`);
     } catch (dbErr) {
-      console.warn('[DB] Save failed:', dbErr.message);
+      console.error('[DB] Save failed critically:', dbErr);
     }
 
     return res.status(200).json({ 
@@ -304,11 +305,19 @@ const createPrediction = async (req, res) => {
 
 const getHistory = async (req, res) => {
   try {
-    // Fix: Use _id from JWT token (stored as id in payload but refers to MongoDB _id)
     const userId = req.user?.id || req.user?._id;
+    console.log(`[HISTORY] Fetching history for userId: ${userId}`);
+    
+    if (!userId) {
+      console.warn('[HISTORY] No userId found in request. User might not be logged in correctly.');
+      return res.json({ success: true, data: [] });
+    }
+
     const predictions = await Prediction.find({ userId }).sort({ createdAt: -1 }).limit(50);
+    console.log(`[HISTORY] Found ${predictions.length} records for user ${userId}`);
     res.json({ success: true, data: predictions });
   } catch (error) {
+    console.error('[HISTORY] Error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 };
