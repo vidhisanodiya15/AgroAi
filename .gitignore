@@ -31,3 +31,6 @@ backend/.env
 
 # Dependencies
 backend/node_modules
+
+# Uploads
+backend/uploads/

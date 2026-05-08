@@ -97,10 +97,12 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
   const keys = getApiKeys();
   if (keys.length === 0) throw new Error('AI API key not configured.');
 
+  // High-reliability model chain
   const modelChain = [
-    'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-pro-vision'
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-exp'
   ];
 
   console.log(`[API] Attempting analysis with ${keys.length} keys and ${modelChain.length} models...`);
@@ -118,8 +120,10 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           const model = genAI.getGenerativeModel({ model: modelName });
+          
+          // Increased timeout to 25s for better reliability on high-res images/slow connections
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('API Timeout')), 10000)
+            setTimeout(() => reject(new Error('API Timeout')), 25000)
           );
           
           const result = await Promise.race([
@@ -127,24 +131,27 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
             timeoutPromise
           ]);
 
+          if (!result || !result.response) throw new Error('Empty AI response');
+          
           const text = result.response.text();
           if (text && text.trim()) return { text: text.trim(), modelName };
         } catch (err) {
           lastError = err;
           const errType = classifyError(err);
+          console.warn(`[API] Attempt ${attempt} failed with ${modelName}: ${err.message.substring(0, 100)}`);
           
           // If 429 (Rate Limit), move to the NEXT KEY immediately
           if (errType === 'rate_limit') {
             console.warn(`[API] Key rate limited. Rotating...`);
-            break; // Skip to next key
+            break; 
           }
           
           // If other error, try next model or next attempt
           if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000 * attempt));
+            await new Promise(r => setTimeout(r, 1500 * attempt));
             continue;
           }
-          break; // Skip to next model
+          break; 
         }
       }
     }
@@ -154,6 +161,8 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
 
 function userFriendlyError(err) {
   const type = classifyError(err);
+  const msg = err.message || '';
+  
   switch (type) {
     case 'rate_limit':
       return { status: 429, message: 'AI service busy. Please wait a moment.', errorType: 'rate_limit' };
@@ -162,8 +171,11 @@ function userFriendlyError(err) {
     case 'network':
       return { status: 503, message: 'Connection timeout. Please check your internet.', errorType: 'network' };
     default:
+      // Include hint if it might be a configuration issue
+      if (msg.includes('key') || msg.includes('API')) {
+        return { status: 500, message: 'AI service configuration error. Please check API keys.', errorType: 'config' };
+      }
       return { status: 500, message: 'Analysis failed. Please try again with a clearer image.', errorType: 'default' };
-  }
 }
 
 // ── Controllers ───────────────────────────────────────────────────────────────
@@ -174,17 +186,34 @@ const analyzeImage = async (req, res) => {
 
     // 1. Image loading & Hashing
     let buffer;
+    
     if (req.file) {
-      buffer = fs.readFileSync(req.file.path);
+      // Prioritize buffer from memoryStorage (more reliable on Render)
+      buffer = req.file.buffer;
+      if (!buffer && req.file.path) {
+        // Fallback to disk if somehow path is still used
+        try {
+          buffer = fs.readFileSync(req.file.path);
+        } catch (e) {
+          console.error('[ANALYZE] Disk read failed:', e.message);
+        }
+      }
     } else if (req.body?.image) {
-      const matches = req.body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-      buffer = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(req.body.image, 'base64');
-    } else {
-      return res.status(400).json({ success: false, error: 'No image provided.' });
+      // Handle base64
+      try {
+        const matches = req.body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+        buffer = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(req.body.image, 'base64');
+      } catch (e) {
+        console.error('[ANALYZE] Base64 decode failed:', e.message);
+      }
     }
 
     if (!buffer || buffer.length < 500) {
-      return res.status(400).json({ success: false, error: 'Invalid image data.' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid or missing image data. Please try uploading the file again.',
+        errorType: 'image_invalid'
+      });
     }
 
     const imageHash = generateImageHash(buffer);
