@@ -176,6 +176,7 @@ function userFriendlyError(err) {
         return { status: 500, message: 'AI service configuration error. Please check API keys.', errorType: 'config' };
       }
       return { status: 500, message: 'Analysis failed. Please try again with a clearer image.', errorType: 'default' };
+  }
 }
 
 // ── Controllers ───────────────────────────────────────────────────────────────
