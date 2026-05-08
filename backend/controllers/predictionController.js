@@ -30,7 +30,65 @@ function getApiKeys() {
   return [...new Set(keys)]; // Unique keys only
 }
 
-// ... existing detectMimeType, cleanCropName, extractJSON, classifyError ...
+function detectMimeType(buffer) {
+  if (!buffer || buffer.length < 4) return 'image/jpeg';
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) return 'image/jpeg';
+  if (buffer[0] === 0x89 && buffer[1] === 0x50) return 'image/png';
+  if (buffer[0] === 0x47 && buffer[1] === 0x49) return 'image/gif';
+  if (buffer[0] === 0x52 && buffer[1] === 0x49) return 'image/webp';
+  return 'image/jpeg';
+}
+
+function cleanCropName(raw) {
+  let name = raw.trim();
+  name = name.replace(/```[\s\S]*?```/g, '').replace(/[`"'*_#]/g, '').trim();
+  const prefixes = [
+    'the crop in this image is', 'the crop is', 'this is a', 'this is an',
+    'crop name is', 'crop name:', 'crop:', 'plant:', 'identified crop:',
+    'identified as', 'the plant is', 'answer:', 'result:', 'based on',
+    'the image shows', 'i can see', 'looking at', 'i believe this is',
+    'this appears to be', 'this looks like', 'the image depicts',
+  ];
+  const lower = name.toLowerCase();
+  for (const p of prefixes) {
+    if (lower.startsWith(p)) { name = name.substring(p.length).trim(); break; }
+  }
+  name = name.split('\n')[0].split('.')[0].split(',')[0].trim();
+  name = name.replace(/[.,;:!?]+$/, '').trim();
+  
+  // Normalize to Title Case
+  if (!name) return 'Unknown';
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
+
+function extractJSON(text) {
+  try {
+    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('[JSON] Parse error:', text);
+    return null;
+  }
+}
+
+function classifyError(err) {
+  const msg = (err.message || '').toLowerCase();
+  if (msg.includes('429') || msg.includes('too many requests') || msg.includes('quota') || msg.includes('rate')) {
+    return 'rate_limit';
+  }
+  if (msg.includes('503') || msg.includes('529') || msg.includes('overload') || msg.includes('unavailable')) {
+    return 'overload';
+  }
+  if (msg.includes('404') || msg.includes('not found') || msg.includes('not supported')) {
+    return 'not_found';
+  }
+  if (msg.includes('network') || msg.includes('econnrefused') || msg.includes('fetch') || msg.includes('timeout')) {
+    return 'network';
+  }
+  return 'unknown';
+}
 
 /**
  * Call Gemini with rotation and retry.
@@ -89,7 +147,19 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
   throw lastError || new Error('All AI keys are currently exhausted.');
 }
 
-// ... existing userFriendlyError ...
+function userFriendlyError(err) {
+  const type = classifyError(err);
+  switch (type) {
+    case 'rate_limit':
+      return { status: 429, message: 'AI service busy. Please wait a moment.', errorType: 'rate_limit' };
+    case 'overload':
+      return { status: 503, message: 'AI service overloaded. Trying again...', errorType: 'overload' };
+    case 'network':
+      return { status: 503, message: 'Connection timeout. Please check your internet.', errorType: 'network' };
+    default:
+      return { status: 500, message: 'Analysis failed. Please try again with a clearer image.', errorType: 'default' };
+  }
+}
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 
