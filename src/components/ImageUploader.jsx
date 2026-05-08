@@ -304,21 +304,13 @@ export default function ImageUploader({ onAnalysisComplete, onAnalysisStart, isA
     <div className="image-uploader-container">
       <div className="glass-panel" style={{ padding: '2rem', position: 'relative', overflow: 'hidden' }}>
         
-        {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>{t('upload_title')}</h3>
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {t('upload_subtitle')}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-             {!image && !showCamera && (
-               <button onClick={startCamera} className="glass-button-sm" title="Use Camera">
-                 <Camera size={18} />
-               </button>
-             )}
-          </div>
+        {/* Header Section - Camera Button Only */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem' }}>
+          {!image && !showCamera && (
+            <button onClick={startCamera} className="glass-button-sm" title="Use Camera">
+              <Camera size={18} />
+            </button>
+          )}
         </div>
 
         {/* Camera View */}
@@ -502,7 +494,7 @@ export default function ImageUploader({ onAnalysisComplete, onAnalysisStart, isA
           ) : (
             <>
               <Zap size={20} />
-              {t('analyze_btn')}
+              Analyze This Image
             </>
           )}
         </button>

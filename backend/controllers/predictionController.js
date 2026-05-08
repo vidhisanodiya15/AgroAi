@@ -245,15 +245,15 @@ NO extra text, NO markdown blocks.`;
       });
     }
 
-    // 5. Save to DB (async)
+    // 5. Save to DB — link to user if logged in
     let savedRecord = null;
-    let imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+    const userId = req.user?.id || req.user?._id || null;
     
     try {
       savedRecord = await Prediction.create({
-        userId: req.user?.id || null, 
-        imageUrl,
-        imageHash, // SAVE HASH FOR CACHING
+        userId,
+        imageUrl: '',            // Memory storage — no disk path
+        imageHash,               // For cache lookup
         crop: finalData.crop_name,
         diseaseName: finalData.disease_name,
         confidenceScore: finalData.confidence,
@@ -262,7 +262,7 @@ NO extra text, NO markdown blocks.`;
         symptoms: finalData.description,
         cause: finalData.cause
       });
-      console.log('[DB] Prediction saved with hash');
+      console.log(`[DB] Prediction saved. userId: ${userId || 'guest'}`);
     } catch (dbErr) {
       console.warn('[DB] Save failed:', dbErr.message);
     }
