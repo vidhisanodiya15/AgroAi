@@ -98,8 +98,7 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
   if (keys.length === 0) throw new Error('AI API key not configured.');
 
   const modelChain = [
-    'gemini-1.5-flash',
-    'gemini-1.5-pro'
+    'gemini-1.5-flash'
   ];
 
   let lastError = null;
