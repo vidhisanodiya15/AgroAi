@@ -98,13 +98,19 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
   if (keys.length === 0) throw new Error('AI API key not configured.');
 
   const modelChain = [
-    'gemini-1.5-flash'
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-pro-vision'
   ];
+
+  console.log(`[API] Attempting analysis with ${keys.length} keys and ${modelChain.length} models...`);
 
   let lastError = null;
 
   // Try each key in the rotation
-  for (const apiKey of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const apiKey = keys[i];
+    console.log(`[API] Trying Key #${i + 1} (${apiKey.substring(0, 6)}...)`);
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // For each key, try each model in the chain
