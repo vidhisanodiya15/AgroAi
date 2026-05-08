@@ -159,11 +159,11 @@ const analyzeImage = async (req, res) => {
     const imagePart = { inlineData: { data: buffer.toString('base64'), mimeType } };
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Prioritize fastest and most stable models
+    // Prioritize standard, supported models
     const modelChain = [
-      'gemini-2.0-flash', 
-      'gemini-1.5-flash', 
-      'gemini-1.5-flash-8b'
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-pro-vision' // Legacy fallback
     ];
 
     // 3. Single-Stage Analysis (Reduces API calls to avoid 429 rate limits)
