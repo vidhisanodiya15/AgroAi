@@ -207,14 +207,6 @@ const analyzeImage = async (req, res) => {
 
     const mimeType = detectMimeType(buffer);
     const imagePart = { inlineData: { data: buffer.toString('base64'), mimeType } };
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // Prioritize standard, supported models
-    const modelChain = [
-      'gemini-1.5-flash',
-      'gemini-1.5-pro',
-      'gemini-pro-vision' // Legacy fallback
-    ];
 
     // 3. Single-Stage Analysis (Reduces API calls to avoid 429 rate limits)
     const analysisPrompt = `TASK: Identify and analyze the plant leaf in this image.
