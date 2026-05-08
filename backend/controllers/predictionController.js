@@ -97,11 +97,12 @@ async function callGeminiWithRotation(contents, maxRetries = 2) {
   const keys = getApiKeys();
   if (keys.length === 0) throw new Error('AI API key not configured.');
 
-  // Refined model chain with stable names and diverse quotas
+  // Refined model chain with highly compatible production names
   const modelChain = [
+    'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b', // Separate quota, very fast
-    'gemini-1.5-pro'
+    'gemini-1.5-pro',
+    'gemini-pro-vision' // Legacy fallback
   ];
 
   console.log(`[API] Attempting analysis with ${keys.length} keys and ${modelChain.length} models...`);
