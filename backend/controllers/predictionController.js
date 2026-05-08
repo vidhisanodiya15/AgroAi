@@ -93,76 +93,60 @@ function classifyError(err) {
 /**
  * Call Gemini with rotation and retry.
  */
-async function callGeminiWithRotation(contents, maxRetries = 2) {
+async function callGeminiWithRotation(contents, maxAttempts = 3) {
   const keys = getApiKeys();
   if (keys.length === 0) throw new Error('AI API key not configured.');
 
   // Model chain: Pro -> Flash -> Flash-8b (Lighter)
-  const modelChain = [
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-pro-vision'
-  ];
-
-  console.log(`[API] Attempting analysis with ${keys.length} keys and ${modelChain.length} models...`);
-
+  const modelChain = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
   let lastError = null;
 
-  // Try each key in the rotation
+  console.log(`[API] Production Mode: ${keys.length} keys, ${modelChain.length} models.`);
+
+  // 1. Loop through keys
   for (let i = 0; i < keys.length; i++) {
-    const apiKey = keys[i];
-    console.log(`[API] Trying Key #${i + 1} (${apiKey.substring(0, 6)}...)`);
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(keys[i]);
     
-    // For each key, try each model in the chain
+    // 2. Loop through models
     for (const modelName of modelChain) {
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
+          console.log(`[API] Key #${i + 1} | ${modelName} | Attempt ${attempt}`);
           const model = genAI.getGenerativeModel({ model: modelName });
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('API Timeout')), 25000)
-          );
           
           const result = await Promise.race([
             model.generateContent(contents),
-            timeoutPromise
+            new Promise((_, reject) => setTimeout(() => reject(new Error('API Timeout')), 25000))
           ]);
 
-          if (!result || !result.response) throw new Error('Empty AI response');
-          
           const text = result.response.text();
-          if (text && text.trim()) return { text: text.trim(), modelName };
+          if (text) return { text: text.trim(), modelName };
         } catch (err) {
           lastError = err;
           const errType = classifyError(err);
-          console.warn(`[API] Attempt ${attempt} failed with ${modelName}: ${err.message.substring(0, 80)}`);
           
-          // If 429 (Rate Limit), move to the NEXT KEY immediately
           if (errType === 'rate_limit') {
-            console.warn(`[API] Key rate limited. Rotating to next key...`);
-            break; // Breaks inner model loop, continues to next key
+            console.warn(`[API] Key #${i + 1} busy. Rotating key...`);
+            break; // Next key
           }
-          
-          // If 404 (Not Found), move to the NEXT MODEL immediately
           if (errType === 'not_found') {
-            break; // Breaks attempt loop, tries next model for same key
+            console.warn(`[API] Model ${modelName} not found.`);
+            break; // Next model
           }
-          
-          // If other error, try next attempt for same model
-          if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000 * attempt));
+
+          if (attempt < maxAttempts) {
+            const delay = attempt * 2000;
+            console.warn(`[API] Error. Retrying in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
             continue;
           }
           break; // Next model
         }
       }
-      // If we broke out of attempts due to rate limit, we should also stop trying models for this key
       if (classifyError(lastError) === 'rate_limit') break;
     }
   }
-  throw lastError || new Error('All AI keys are currently exhausted.');
+  throw lastError || new Error('AI services exhausted.');
 }
 
 function userFriendlyError(err) {
