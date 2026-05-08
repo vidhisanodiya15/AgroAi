@@ -34,7 +34,7 @@ RULES:
     }
 
     // Delegate to centralized manager (includes request queue + key rotation)
-    const reply = await callGeminiChat({ systemInstruction }, message.trim(), chatHistory);
+    const reply = await callGeminiChat(systemInstruction, message.trim(), chatHistory);
 
     res.json({ success: true, reply });
   } catch (error) {

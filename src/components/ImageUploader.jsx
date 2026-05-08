@@ -410,7 +410,7 @@ export default function ImageUploader({ onAnalysisComplete, onAnalysisStart, isA
                   <div className="analysis-overlay">
                     <div className="scanning-line" />
                     <div className="analysis-content">
-                      <LoadingSpinner size="lg" color="var(--accent-color)" />
+                      <LoadingSpinner size={48} color="var(--accent-color)" />
                       <span className="analysis-status">
                         {analysisStage === 'optimizing' && 'Optimizing Image...'}
                         {analysisStage === 'scanning' && 'Scanning with AI...'}
