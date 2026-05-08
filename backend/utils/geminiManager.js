@@ -100,8 +100,8 @@ async function callGemini(contents) {
     const keys = getApiKeys();
     if (keys.length === 0) throw new Error('No Gemini API keys configured.');
 
-    // Use valid v1beta models that are currently supported
-    const models = ['gemini-2.0-flash', 'gemini-1.5-pro'];
+    // Use most stable v1beta model for better compatibility
+    const models = ['gemini-1.5-pro'];
     let lastError = null;
 
     for (const key of keys) {
@@ -155,7 +155,7 @@ async function callGeminiChat(systemInstruction, message, chatHistory = []) {
     const keys = getApiKeys();
     if (keys.length === 0) throw new Error('No Gemini API keys configured.');
 
-    const models = ['gemini-2.0-flash', 'gemini-1.5-pro'];
+    const models = ['gemini-1.5-pro'];
     let lastError = null;
 
     for (const key of keys) {
