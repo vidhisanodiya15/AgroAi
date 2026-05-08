@@ -287,7 +287,7 @@ const createPrediction = async (req, res) => {
     const { crop, diseaseName, confidenceScore, treatment, prevention, symptoms, imageUrl } = req.body;
     
     const prediction = await Prediction.create({
-      userId: req.user.id,
+      userId: req.user?.id || req.user?._id,
       crop,
       diseaseName,
       confidenceScore,

@@ -48,12 +48,13 @@ export const dashboardService = {
           ...getAuthHeaders(),
         },
         body: JSON.stringify({
-          crop: result.cropName,
-          diseaseName: result.disease,
+          crop: result.crop_name,
+          diseaseName: result.disease_name,
           confidenceScore: result.confidence,
           treatment: result.treatment,
           prevention: result.prevention,
           symptoms: result.description,
+          imageUrl: result.imageUrl || ''
         }),
       });
 
