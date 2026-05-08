@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config';
 
 const WeatherContext = createContext();
 
@@ -15,7 +16,7 @@ export const WeatherProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      let url = '/api/weather?';
+      let url = `${API_ENDPOINTS.weather}?`;
       if (lat && lon) url += `lat=${lat}&lon=${lon}`;
       else if (city) url += `city=${encodeURIComponent(city)}`;
       else url += `city=New Delhi`; // Default

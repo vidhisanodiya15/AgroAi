@@ -34,10 +34,10 @@ if (result.error) {
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? true // Allow all in production or specify your render URL
-    : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'],
+  origin: [frontendUrl, 'http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'],
   credentials: true,
 }));
 app.use(express.json({ limit: '20mb' }));
@@ -50,10 +50,7 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve Static Frontend Files (for production)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-}
+// Note: Static Frontend serving removed to allow separate deployment
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
@@ -137,12 +134,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, error: 'Internal server error.' });
 });
 
-// ── Frontend Routing ─────────────────────────────────────────────────────────
-if (process.env.NODE_ENV === 'production') {
-  app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
-  });
-}
+// ── Health Check ──────────────────────────────────────────────────────────────
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react';
 import { MessageSquare, X, Send, Sparkles, ChevronRight, Mic } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { API_ENDPOINTS } from '../config';
 
 // ── UI strings ────────────────────────────────────────────────────────────────
 const UI = {
@@ -162,7 +163,7 @@ export default function Chatbot({ inline = false }) {
       // 2. Optimized history handling: Only send last 6 messages for context
       const historyForApi = messages.slice(-6).map(m => ({ text: m.text, isBot: m.isBot }));
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch(API_ENDPOINTS.chat, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaPaperPlane } from 'react-icons/fa';
+import { API_ENDPOINTS } from '../config';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ export default function Contact() {
     setStatus({ type: '', message: '' });
 
     try {
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(API_ENDPOINTS.feedback, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

@@ -1,4 +1,5 @@
 import { auth } from '../utils/auth';
+import { API_ENDPOINTS } from '../config';
 
 const getAuthHeaders = () => {
   const token = auth.getToken();
@@ -9,7 +10,7 @@ export const dashboardService = {
   /** Fetch prediction history for the logged-in user */
   getHistory: async () => {
     try {
-      const response = await fetch('/api/predictions/history', {
+      const response = await fetch(API_ENDPOINTS.predictions.history, {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
@@ -28,7 +29,7 @@ export const dashboardService = {
         treatment: item.treatment || '',
         prevention: item.prevention || '',
         description: item.symptoms || '',
-        image: item.imageUrl || null,
+        image: item.imageUrl ? (item.imageUrl.startsWith('http') ? item.imageUrl : `${API_ENDPOINTS.predictions.save.replace('/api/predictions', '')}${item.imageUrl}`) : null,
         date: item.createdAt || new Date().toISOString(),
       }));
     } catch (err) {
@@ -40,7 +41,7 @@ export const dashboardService = {
   /** Save a prediction result to the user's history */
   savePrediction: async (result) => {
     try {
-      const response = await fetch('/api/predictions', {
+      const response = await fetch(API_ENDPOINTS.predictions.save, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,28 +71,28 @@ export const dashboardService = {
 
 export const adminService = {
   getStats: async () => {
-    const response = await fetch('/api/admin/stats', { headers: getAuthHeaders() });
+    const response = await fetch(API_ENDPOINTS.admin.stats, { headers: getAuthHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Failed to fetch admin stats');
     return data;
   },
 
   getAllUsers: async () => {
-    const response = await fetch('/api/admin/users', { headers: getAuthHeaders() });
+    const response = await fetch(API_ENDPOINTS.admin.users, { headers: getAuthHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Failed to fetch users');
     return data.data;
   },
 
   getAllPredictions: async () => {
-    const response = await fetch('/api/admin/predictions', { headers: getAuthHeaders() });
+    const response = await fetch(API_ENDPOINTS.admin.predictions, { headers: getAuthHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Failed to fetch predictions');
     return data.data;
   },
 
   deleteUser: async (id) => {
-    const response = await fetch(`/api/admin/users/${id}`, { 
+    const response = await fetch(`${API_ENDPOINTS.admin.users}/${id}`, { 
       method: 'DELETE',
       headers: getAuthHeaders() 
     });
@@ -101,7 +102,7 @@ export const adminService = {
   },
 
   deletePrediction: async (id) => {
-    const response = await fetch(`/api/admin/predictions/${id}`, { 
+    const response = await fetch(`${API_ENDPOINTS.admin.predictions}/${id}`, { 
       method: 'DELETE',
       headers: getAuthHeaders() 
     });
@@ -111,7 +112,7 @@ export const adminService = {
   },
 
   getAllFeedback: async () => {
-    const response = await fetch('/api/feedback', { headers: getAuthHeaders() });
+    const response = await fetch(API_ENDPOINTS.feedback, { headers: getAuthHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Failed to fetch feedback');
     return data.data;

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, X, AlertCircle, Clock, WifiOff, Zap, Camera, RefreshCw, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { API_ENDPOINTS } from '../config';
 import LoadingSpinner from './LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -278,7 +279,7 @@ export default function ImageUploader({ onAnalysisComplete, onAnalysisStart, isA
 
     try {
       const token = localStorage.getItem('agro_ai_token') || '';
-      const response = await fetch('/api/analyze-image', {
+      const response = await fetch(API_ENDPOINTS.predictions.analyze, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
