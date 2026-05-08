@@ -77,20 +77,4 @@ const chatWithAI = async (req, res) => {
   }
 };
 
-    // 4. Update Cache (for simple queries)
-    if (history.length === 0 && reply) {
-      if (CHAT_CACHE.size >= MAX_CACHE_SIZE) {
-        const firstKey = CHAT_CACHE.keys().next().value;
-        CHAT_CACHE.delete(firstKey);
-      }
-      CHAT_CACHE.set(cacheKey, reply.trim());
-    }
-
-    res.json({ success: true, reply: reply.trim() });
-  } catch (error) {
-    console.error('[CHAT] Error:', error);
-    res.status(500).json({ success: false, error: 'Chatbot service error.' });
-  }
-};
-
 module.exports = { chatWithAI };
