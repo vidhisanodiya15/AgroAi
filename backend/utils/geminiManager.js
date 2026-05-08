@@ -100,7 +100,8 @@ async function callGemini(contents) {
     const keys = getApiKeys();
     if (keys.length === 0) throw new Error('No Gemini API keys configured.');
 
-    const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
+    // Use valid v1beta models that are currently supported
+    const models = ['gemini-2.0-flash', 'gemini-1.5-pro'];
     let lastError = null;
 
     for (const key of keys) {
@@ -128,7 +129,7 @@ async function callGemini(contents) {
               break; // Model not available, try next model
             }
             if (attempt === 0) {
-              const delay = 2000;
+              const delay = 3000 + Math.random() * 2000; // 3-5s with jitter
               console.warn(`[GeminiMgr] Retrying in ${delay}ms...`);
               await new Promise(r => setTimeout(r, delay));
             }
@@ -154,7 +155,7 @@ async function callGeminiChat(systemInstruction, message, chatHistory = []) {
     const keys = getApiKeys();
     if (keys.length === 0) throw new Error('No Gemini API keys configured.');
 
-    const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
+    const models = ['gemini-2.0-flash', 'gemini-1.5-pro'];
     let lastError = null;
 
     for (const key of keys) {
