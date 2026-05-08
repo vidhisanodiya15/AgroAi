@@ -6,29 +6,44 @@ const connectDB = require('./config/db');
 
 const fs = require('fs');
 
-const envPath = path.join(__dirname, '.env');
-const result = dotenv.config({ path: envPath });
-
-// Manual fallback if dotenv fails to see the key
-if (!process.env.OPENWEATHER_API_KEY) {
+const envPaths = [
+  path.join(__dirname, '..', '.env'), // root .env
+  path.join(__dirname, '.env')      // backend/.env
+];
+let loadedEnvFiles = [];
+for (const envPath of envPaths) {
   try {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const lines = envContent.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('OPENWEATHER_API_KEY=')) {
-        process.env.OPENWEATHER_API_KEY = line.split('=')[1].trim();
-        console.log('📡 Manual fallback: OPENWEATHER_API_KEY loaded from file.');
-      }
+    const result = dotenv.config({ path: envPath });
+    if (!result.error) {
+      loadedEnvFiles.push(envPath);
     }
-  } catch (err) {
-    console.error('📡 Manual fallback failed:', err.message);
+  } catch (e) {
+    // ignore if file not present or unreadable
   }
 }
 
-if (result.error) {
-  console.warn('⚠️ Standard dotenv load failed, using manual fallback if possible.');
+if (loadedEnvFiles.length > 0) {
+  console.log(`📡 Environment loaded from: ${loadedEnvFiles.join(', ')}`);
 } else {
-  console.log(`📡 Environment loaded from: ${envPath}`);
+  console.warn('⚠️ No local .env file loaded; relying on environment variables only.');
+}
+
+// Manual fallback for OPENWEATHER_API_KEY when dotenv load did not populate it
+if (!process.env.OPENWEATHER_API_KEY) {
+  for (const envPath of envPaths) {
+    try {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('OPENWEATHER_API_KEY=')) {
+          process.env.OPENWEATHER_API_KEY = line.split('=')[1].trim();
+          console.log('📡 Manual fallback: OPENWEATHER_API_KEY loaded from file.');
+        }
+      }
+    } catch (err) {
+      // ignore missing file
+    }
+  }
 }
 
 const app = express();

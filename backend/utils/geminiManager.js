@@ -15,11 +15,16 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 function getApiKeys() {
   const raw = [
     process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_1,
     process.env.GEMINI_API_KEY_2,
     process.env.GEMINI_API_KEY_3,
+    process.env.VITE_GEMINI_API_KEY,
   ].filter(k => k && k.trim().length > 10);
   const unique = [...new Set(raw.map(k => k.trim()))];
   console.log(`[GeminiMgr] Loaded ${unique.length} unique API key(s).`);
+  if (unique.length <= 1) {
+    console.warn('[GeminiMgr] Warning: Fewer than 2 unique Gemini API keys configured. Rotation will not protect against rate limits.');
+  }
   return unique;
 }
 
