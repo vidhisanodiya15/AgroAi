@@ -1,7 +1,7 @@
 const Prediction = require('../models/Prediction');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const { callGemini } = require('../utils/geminiManager');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -18,17 +18,7 @@ function generateImageHash(buffer) {
   return crypto.createHash('md5').update(buffer).digest('hex');
 }
 
-/**
- * Gets all available Gemini API keys from environment variables for rotation.
- */
-function getApiKeys() {
-  const keys = [];
-  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-  if (process.env.GEMINI_API_KEY_2) keys.push(process.env.GEMINI_API_KEY_2);
-  if (process.env.GEMINI_API_KEY_3) keys.push(process.env.GEMINI_API_KEY_3);
-  if (process.env.VITE_GEMINI_API_KEY) keys.push(process.env.VITE_GEMINI_API_KEY);
-  return [...new Set(keys)]; // Unique keys only
-}
+// API key management handled by geminiManager.js
 
 function detectMimeType(buffer) {
   if (!buffer || buffer.length < 4) return 'image/jpeg';
@@ -90,64 +80,7 @@ function classifyError(err) {
   return 'unknown';
 }
 
-/**
- * Call Gemini with rotation and retry.
- */
-async function callGeminiWithRotation(contents, maxAttempts = 3) {
-  const keys = getApiKeys();
-  if (keys.length === 0) throw new Error('AI API key not configured.');
-
-  // Model chain: Pro -> Flash -> Flash-8b (Lighter)
-  const modelChain = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-  let lastError = null;
-
-  console.log(`[API] Production Mode: ${keys.length} keys, ${modelChain.length} models.`);
-
-  // 1. Loop through keys
-  for (let i = 0; i < keys.length; i++) {
-    const genAI = new GoogleGenerativeAI(keys[i]);
-    
-    // 2. Loop through models
-    for (const modelName of modelChain) {
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          console.log(`[API] Key #${i + 1} | ${modelName} | Attempt ${attempt}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          
-          const result = await Promise.race([
-            model.generateContent(contents),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('API Timeout')), 25000))
-          ]);
-
-          const text = result.response.text();
-          if (text) return { text: text.trim(), modelName };
-        } catch (err) {
-          lastError = err;
-          const errType = classifyError(err);
-          
-          if (errType === 'rate_limit') {
-            console.warn(`[API] Key #${i + 1} busy. Rotating key...`);
-            break; // Next key
-          }
-          if (errType === 'not_found') {
-            console.warn(`[API] Model ${modelName} not found.`);
-            break; // Next model
-          }
-
-          if (attempt < maxAttempts) {
-            const delay = attempt * 2000;
-            console.warn(`[API] Error. Retrying in ${delay}ms...`);
-            await new Promise(r => setTimeout(r, delay));
-            continue;
-          }
-          break; // Next model
-        }
-      }
-      if (classifyError(lastError) === 'rate_limit') break;
-    }
-  }
-  throw lastError || new Error('AI services exhausted.');
-}
+// callGeminiWithRotation is now handled by geminiManager.js (imported as callGemini)
 
 function userFriendlyError(err) {
   const type = classifyError(err);
@@ -256,7 +189,7 @@ NO extra text, NO markdown blocks.`;
     let finalData = null;
     try {
       // Use high-reliability rotation logic
-      const result = await callGeminiWithRotation([analysisPrompt, imagePart], 2);
+      const result = await callGemini([analysisPrompt, imagePart]);
       const resJson = extractJSON(result.text);
       
       if (!resJson) throw new Error('Failed to parse AI response');
