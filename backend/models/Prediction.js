@@ -34,6 +34,15 @@ const predictionSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  imageHash: {
+    type: String,
+    required: false,
+    index: true,
+  },
+  cause: {
+    type: String,
+    required: false,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Prediction', predictionSchema);
